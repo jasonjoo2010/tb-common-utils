@@ -9,7 +9,7 @@
  * Version: $Id$
  *
  * Authors:
- *   duolong <duolong@taobao.com>
+ *   duolong
  *
  */
 
@@ -46,7 +46,7 @@ void test1()
     x = CNetUtil::strToAddr("192.168.207.12", port); m.insert(x);
     x = CNetUtil::strToAddr("192.168.207.12", port+1); m.insert(x);
     x = CNetUtil::strToAddr("192.168.207.12", port-1); m.insert(x);
-    x = CNetUtil::strToAddr("92.168.207.191", port); m.insert(x);
+    x = CNetUtil::strToAddr("192.168.207.191", port); m.insert(x);
     x = CNetUtil::strToAddr("172.168.207.192", port); m.insert(x);
     x = CNetUtil::strToAddr("172.168.207.12", port); m.insert(x);
     x = CNetUtil::strToAddr("172.169.207.12", port); m.insert(x);

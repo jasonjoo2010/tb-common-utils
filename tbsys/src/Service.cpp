@@ -9,7 +9,7 @@
  * Version: $Id$
  *
  * Authors:
- *   duolong <duolong@taobao.com>
+ *   duolong
  *
  */
 
@@ -248,7 +248,7 @@ int Service::main(int argc,char*argv[])
             if (p != NULL)
                 *p = '\0';
             otherpid = atoi(buffer);
-            unlink(_pidFile.c_str());//É¾³ýpidfile
+            unlink(_pidFile.c_str());//åˆ é™¤pidfile
         }
         else
         {

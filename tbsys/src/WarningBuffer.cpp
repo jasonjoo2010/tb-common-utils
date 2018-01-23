@@ -9,7 +9,7 @@
  * Version:  WarningBuffer.cpp,  09/27/2012 05:01:00 PM xiaochu Exp $
  * 
  * Author:  
- *   xiaochu.yh <xiaochu.yh@taobao.com>
+ *   xiaochu.yh
  * Description:  
  *   fix length string ring buffer
  * 

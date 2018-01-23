@@ -12,14 +12,8 @@ AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
 AC_PROG_LIBTOOL
-AC_LANG_CPLUSPLUS 
-CXXFLAGS="-g -Wall -fPIC"
-
-if test -n "${TBLIB_ROOT}"; then
-    ac_default_prefix=${TBLIB_ROOT} 
-    includedir=${ac_default_prefix}/include/tbsys
-fi
-# Checks for libraries.
+AC_LANG_CPLUSPLUS
+CXXFLAGS="-g -Wall -fPIC -Wno-deprecated"
 
 # Checks for header files.
 AC_HEADER_STDC

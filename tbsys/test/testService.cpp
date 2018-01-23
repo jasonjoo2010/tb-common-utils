@@ -9,7 +9,7 @@
  * Version: $Id$
  *
  * Authors:
- *   duolong <duolong@taobao.com>
+ *   duolong
  *
  */
 

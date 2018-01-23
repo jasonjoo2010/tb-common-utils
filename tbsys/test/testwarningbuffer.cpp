@@ -9,7 +9,7 @@
  * Version:  testwarningbuffer.cpp,  09/27/2012 06:42:21 PM xiaochu Exp $
  * 
  * Author:  
- *   xiaochu.yh <xiaochu.yh@taobao.com>
+ *   xiaochu.yh
  * Description:  
  *   test warning buffer
  * 

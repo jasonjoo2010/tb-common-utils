@@ -9,7 +9,7 @@
  * Version:  WarningBuffer.h,  09/27/2012 05:01:00 PM xiaochu Exp $
  *
  * Author:
- *   xiaochu.yh <xiaochu.yh@taobao.com>
+ *   xiaochu.yh
  * Description:
  *   fix length string ring buffer for warning message
  *
@@ -104,6 +104,11 @@ namespace tbsys
         return 0;
       }
 
+      void reset_err_msg()
+      {
+        err_msg_.reset_err_msg();
+      }
+
     void set_err_msg(const char* str)
     {
       err_msg_.set(str);
@@ -116,7 +121,15 @@ namespace tbsys
     {
       if (this != &other)
       {
-        uint32_t n = total_warning_count_ >= BUFFER_SIZE ? BUFFER_SIZE : append_idx_;
+        uint32_t n = 0;
+        if (total_warning_count_ >= BUFFER_SIZE)
+        {
+          n = BUFFER_SIZE;
+        }
+        else
+        {
+          n = other.append_idx_;
+        }
         for (uint32_t i = 0; i < n; ++i)
         {
           item_[i] = other.item_[i];
@@ -135,6 +148,10 @@ namespace tbsys
         int log_level_;
         int line_no_;
 
+        void reset_err_msg()
+        {
+          msg_[0] = '\0';
+        }
         void set(const char*str)
         {
           snprintf(msg_, STR_LEN, "%s", str);
@@ -181,8 +198,12 @@ namespace tbsys
 
       WarningBuffer* get_buffer() const
       {
-        WarningBuffer * buffer = NULL;
-        if (INVALID_THREAD_KEY != key_)
+        static __thread WarningBuffer * buffer = NULL;
+        if (NULL != buffer)
+        {
+          //return buffer, faster path
+        }
+        else if (INVALID_THREAD_KEY != key_)
         {
           void* ptr = pthread_getspecific(key_);
           if (NULL == ptr)

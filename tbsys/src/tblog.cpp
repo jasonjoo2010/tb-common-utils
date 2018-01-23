@@ -9,7 +9,7 @@
  * Version: $Id$
  *
  * Authors:
- *   duolong <duolong@taobao.com>
+ *   duolong
  *
  */
 
@@ -19,7 +19,7 @@
 #include <sys/uio.h>
 namespace tbsys
 {
-
+LogExtraHeaderCallback LOG_EXTRA_HEADER_CB = NULL;
 const char * const CLogger::_errstr[] = {"ERROR","USER_ERR","WARN","INFO","TRACE","DEBUG"};
 
 CLogger::CLogger() {
@@ -114,7 +114,7 @@ void CLogger::setFileName(const char *filename, bool flag, bool open_wf)
 }
 
   static  char NEWLINE[1] = {'\n'};
-
+  static const int MAX_LOG_SIZE = 64*1024; // 64kb
   void CLogger::logMessage(int level,const char *file, int line, const char *function, pthread_t tid, const char *fmt, ...) {
     if (level>_level) return;
 
@@ -127,16 +127,16 @@ void CLogger::setFileName(const char *filename, bool flag, bool open_wf)
     struct tm tm;
     ::localtime_r((const time_t*)&tv.tv_sec, &tm);
 
-    char data1[4000];
-    char head[128];
+    static __thread char data1[MAX_LOG_SIZE];
+    char head[256];
 
     va_list args;
     va_start(args, fmt);
-    int data_size = vsnprintf(data1, 4000, fmt, args);
+    int data_size = vsnprintf(data1, MAX_LOG_SIZE, fmt, args);
     va_end(args);
-    if (data_size >= 4000)
+    if (data_size >= MAX_LOG_SIZE)
     {
-      data_size = 3999;
+      data_size = MAX_LOG_SIZE-1;
     }
     // remove trailing '\n'
     while (data1[data_size-1] == '\n') data_size --;
@@ -144,28 +144,49 @@ void CLogger::setFileName(const char *filename, bool flag, bool open_wf)
 
     int head_size;
     if (level < TBSYS_LOG_LEVEL_INFO) {
-        head_size = snprintf(head,128,"[%04d-%02d-%02d %02d:%02d:%02d.%06ld] %-5s %s (%s:%d) [%ld] ",
+        head_size = snprintf(head,256,"[%04d-%02d-%02d %02d:%02d:%02d.%06ld] %-5s %s (%s:%d) [%ld] ",
                         tm.tm_year+1900, tm.tm_mon+1, tm.tm_mday,
                         tm.tm_hour, tm.tm_min, tm.tm_sec, tv.tv_usec,
                         _errstr[level], function, file, line, tid);
     } else {
-        head_size = snprintf(head,128,"[%04d-%02d-%02d %02d:%02d:%02d.%06ld] %-5s %s:%d [%ld] ",
+        head_size = snprintf(head,256,"[%04d-%02d-%02d %02d:%02d:%02d.%06ld] %-5s %s:%d [%ld] ",
                         tm.tm_year+1900, tm.tm_mon+1, tm.tm_mday,
                         tm.tm_hour, tm.tm_min, tm.tm_sec, tv.tv_usec,
                         _errstr[level], file, line, tid);
     }
-    struct iovec vec[3];
+    //truncated
+    if (head_size >= 256)
+    {
+      head_size = 255;
+    }
+    // extra header
+    char extra_head[256];
+    extra_head[0] = '\0';
+    int32_t extra_head_size = 0;
+    if (NULL != LOG_EXTRA_HEADER_CB)
+    {
+      extra_head_size = LOG_EXTRA_HEADER_CB(extra_head, 256,
+                                            level, file, line, function, tid);
+    }
+    //truncated
+    if (extra_head_size >= 256)
+    {
+      extra_head_size = 255;
+    }
+    struct iovec vec[4];
     vec[0].iov_base = head;
     vec[0].iov_len = head_size;
-    vec[1].iov_base = data1;
-    vec[1].iov_len = data_size;
-    vec[2].iov_base = NEWLINE;
-    vec[2].iov_len = sizeof(NEWLINE);
+    vec[1].iov_base = extra_head;
+    vec[1].iov_len = extra_head_size;
+    vec[2].iov_base = data1;
+    vec[2].iov_len = data_size;
+    vec[3].iov_base = NEWLINE;
+    vec[3].iov_len = sizeof(NEWLINE);
     if (data_size > 0)
     {
-      ::writev(_fd, vec, 3);
+      ::writev(_fd, vec, 4);
       if (_wf_flag && level <= _wf_level)
-        ::writev(_wf_fd, vec, 3);
+        ::writev(_wf_fd, vec, 4);
     }
     if ( _maxFileSize ){
         pthread_mutex_lock(&_fileSizeMutex);
@@ -203,9 +224,9 @@ void CLogger::setFileName(const char *filename, bool flag, bool open_wf)
     return;
 }
 
-void CLogger::rotateLog(const char *filename, const char *fmt) 
+void CLogger::rotateLog(const char *filename, const char *fmt)
 {
-    if (filename == NULL && _name != NULL) 
+    if (filename == NULL && _name != NULL)
     {
         filename = _name;
     }
@@ -214,7 +235,7 @@ void CLogger::rotateLog(const char *filename, const char *fmt)
     {
       snprintf(wf_filename, sizeof(wf_filename), "%s.wf", filename);
     }
-    if (access(filename, R_OK) == 0) 
+    if (access(filename, R_OK) == 0)
     {
         char oldLogFile[256];
         char old_wf_log_file[256];
@@ -222,14 +243,14 @@ void CLogger::rotateLog(const char *filename, const char *fmt)
         time(&t);
         struct tm tm;
         localtime_r((const time_t*)&t, &tm);
-        if (fmt != NULL) 
+        if (fmt != NULL)
         {
             char tmptime[256];
             strftime(tmptime, sizeof(tmptime), fmt, &tm);
             sprintf(oldLogFile, "%s.%s", filename, tmptime);
             snprintf(old_wf_log_file, sizeof(old_wf_log_file), "%s.%s", wf_filename, tmptime);
         }
-        else 
+        else
         {
             sprintf(oldLogFile, "%s.%04d%02d%02d%02d%02d%02d",
                 filename, tm.tm_year+1900, tm.tm_mon+1, tm.tm_mday,
@@ -238,10 +259,10 @@ void CLogger::rotateLog(const char *filename, const char *fmt)
               wf_filename, tm.tm_year+1900, tm.tm_mon+1, tm.tm_mday,
               tm.tm_hour, tm.tm_min, tm.tm_sec);
         }
-        if ( _maxFileIndex > 0 ) 
+        if ( _maxFileIndex > 0 )
         {
             pthread_mutex_lock(&_fileIndexMutex);
-            if ( _fileList.size() >= _maxFileIndex ) 
+            if ( _fileList.size() >= _maxFileIndex )
             {
                 std::string oldFile = _fileList.front();
                 _fileList.pop_front();
@@ -251,7 +272,7 @@ void CLogger::rotateLog(const char *filename, const char *fmt)
             pthread_mutex_unlock(&_fileIndexMutex);
         }
         rename(filename, oldLogFile);
-        if (_wf_flag && _maxFileIndex > 0) 
+        if (_wf_flag && _maxFileIndex > 0)
         {
           pthread_mutex_lock(&_fileIndexMutex);
           if (_wf_file_list.size() >= _maxFileIndex)

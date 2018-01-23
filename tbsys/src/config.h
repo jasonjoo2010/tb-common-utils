@@ -9,7 +9,7 @@
  * Version: $Id$
  *
  * Authors:
- *   duolong <duolong@taobao.com>
+ *   duolong
  *
  */
 
@@ -26,7 +26,7 @@
 
 namespace tbsys {
 /** 
-* @brief Éú³ÉstringµÄhashÖµ 
+* @brief ç”Ÿæˆstringçš„hashå€¼ 
 */
     struct str_hash {
         size_t operator()(const std::string& str) const {
@@ -34,7 +34,7 @@ namespace tbsys {
         }
     };
     /** 
-     * @brief ×Ö·û´®±È½Ï
+     * @brief å­—ç¬¦ä¸²æ¯”è¾ƒ
      */
     struct char_equal {
         bool operator()(const char* s1, const char* s2) const {
@@ -49,39 +49,44 @@ namespace tbsys {
     #define TBSYS_CONFIG tbsys::CConfig::getCConfig()
     
     /** 
-     * @brief ½âÎöÅäÖÃÎÄ¼ş,²¢½«ÅäÖÃÏîÒÔkey-valueµÄĞÎÊ½´æ´¢µ½ÄÚ´æÖĞ
+     * @brief è§£æé…ç½®æ–‡ä»¶,å¹¶å°†é…ç½®é¡¹ä»¥key-valueçš„å½¢å¼å­˜å‚¨åˆ°å†…å­˜ä¸­
      */
     class           CConfig {
         public:
             CConfig();
             ~CConfig();
             
-            // ¼ÓÔØÒ»¸öÎÄ¼ş
+            // åŠ è½½ä¸€ä¸ªæ–‡ä»¶
             int load(const char *filename);
-            // È¡Ò»¸ö×Ö·û´®
+            // åŠ è½½ä¸€ä¸ªç¼“å†²åŒº
+            int loadContent(const char * content);
+            // å–ä¸€ä¸ªå­—ç¬¦ä¸²
             const char *getString(const char *section, const std::string& key, const char *d = NULL);
-            // È¡Ò»stringÁĞ±í
+            // å–ä¸€stringåˆ—è¡¨
             std::vector<const char*> getStringList(const char *section, const std::string& key);
-            // È¡Ò»¸öÕûĞÍ
+            // å–ä¸€ä¸ªæ•´å‹
             int getInt(char const *section, const std::string& key, int d = 0);
-            // È¡Ò»ÕûĞÍÁĞ±í
+            // å–ä¸€æ•´å‹åˆ—è¡¨
             std::vector<int> getIntList(const char *section, const std::string& key);
-            // È¡Ò»sectionÏÂËùÓĞµÄkey
+            // å–ä¸€sectionä¸‹æ‰€æœ‰çš„key
             int getSectionKey(const char *section, std::vector<std::string> &keys);
-            // µÃµ½ËùÓĞsectionµÄÃû×Ö
+            // å¾—åˆ°æ‰€æœ‰sectionçš„åå­—
             int getSectionName(std::vector<std::string> &sections);
-            // ÍêÕûµÄÅäÖÃÎÄ¼ş×Ö·û´®
+            // å®Œæ•´çš„é…ç½®æ–‡ä»¶å­—ç¬¦ä¸²
             std::string toString();
-            // µÃµ½¾²Ì¬ÊµÀı
+            // å¾—åˆ°é™æ€å®ä¾‹
             static CConfig& getCConfig();
             
         private:
-            // Á½²ãmap
+            // ä¸¤å±‚map
             STR_MAP m_configMap;
             
         private:
-            // ½âÎö×Ö·û´®
-            int parseValue(char *str, char *key, char *val);
+            // è§£æå­—ç¬¦ä¸²
+            int parseValue(char *str, char *key, int max_key_len, char *val, int max_value_len);
+            int parseLine(STR_STR_MAP *&m, char *data);
+            int getLine(char * buf, const int buf_len,
+                const char * content, const int content_len, int & pos);
             char *isSectionName(char *str);     
     };
 }

@@ -9,7 +9,7 @@
  * Version: $Id$
  *
  * Authors:
- *   duolong <duolong@taobao.com>
+ *   duolong
  *
  */
 
@@ -48,10 +48,14 @@
                                                             pthread_self(), tbsys::CLogger::get_cur_tv().tv_sec, \
                                                             tbsys::CLogger::get_cur_tv().tv_usec, ##args))
 
+typedef int32_t (*LogExtraHeaderCallback)(char *buf, int32_t buf_size,
+                                          int level, const char *file, int line, const char *function, pthread_t tid);
+
 namespace tbsys {
 using std::deque;
 using std::string;
 
+extern LogExtraHeaderCallback LOG_EXTRA_HEADER_CB;
 /**
 * @brief ¼òµ¥µÄÈÕÖ¾ÏµÍ³
 */

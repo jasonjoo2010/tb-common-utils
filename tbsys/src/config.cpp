@@ -9,7 +9,7 @@
  * Version: $Id$
  *
  * Authors:
- *   duolong <duolong@taobao.com>
+ *   duolong
  *
  */
 
@@ -21,14 +21,14 @@ namespace tbsys {
     static CConfig _config;
 
     /**
-     * ¹¹Ôìº¯Êı
+     * æ„é€ å‡½æ•°
      */
     CConfig::CConfig()
     {
     }
 
     /**
-     * Îö¹¹º¯Êı
+     * ææ„å‡½æ•°
      */
     CConfig::~CConfig()
     {
@@ -38,7 +38,7 @@ namespace tbsys {
     }
 
     /**
-     * µÃµ½¾²Ì¬ÊµÀı
+     * å¾—åˆ°é™æ€å®ä¾‹
      */
     CConfig& CConfig::getCConfig()
     {
@@ -46,20 +46,22 @@ namespace tbsys {
     }
 
     /**
-     * ½âÎö×Ö·û´®
+     * è§£æå­—ç¬¦ä¸²
      */
-    int CConfig::parseValue(char *str, char *key, char *val)
+    int CConfig::parseValue(char *str, char *key, int max_key_len, char *val, int max_value_len)
     {
+        int             ret = 0;
+        int             snprintf_ret = 0;
         char           *p, *p1, *name, *value;
     
         if (str == NULL)
             return -1;
     
         p = str;
-        // È¥Ç°ÖÃ¿Õ¸ñ
+        // å»å‰ç½®ç©ºæ ¼
         while ((*p) == ' ' || (*p) == '\t' || (*p) == '\r' || (*p) == '\n') p++;
         p1 = p + strlen(p);
-        // È¥ºóÖÃ¿Õ¸ñ
+        // å»åç½®ç©ºæ ¼
         while(p1 > p) {
             p1 --;
             if (*p1 == ' ' || *p1 == '\t' || *p1 == '\r' || *p1 == '\n') continue;
@@ -67,7 +69,7 @@ namespace tbsys {
             break;
         }
         (*p1) = '\0';
-        // ÊÇ×¢ÊÍĞĞ»ò¿ÕĞĞ
+        // æ˜¯æ³¨é‡Šè¡Œæˆ–ç©ºè¡Œ
         if (*p == '#' || *p == '\0') return -1;
         p1 = strchr(str, '=');
         if (p1 == NULL) return -2;
@@ -83,14 +85,65 @@ namespace tbsys {
         (*p) = '\0';
         if (name[0] == '\0')
             return -2;
-    
-        strcpy(key, name);
-        strcpy(val, value);
-    
-        return 0;
+
+        if (0 == ret)
+        {
+          if (max_key_len <= (snprintf_ret = snprintf(key, max_key_len, "%s", name)))
+          {
+            TBSYS_LOG(ERROR, "key's length (%d) is too large. max key length supported is %d. key=%s",
+                strlen(name), max_key_len - 1, name);
+            ret = -2;
+          }
+          else if (max_value_len <= (snprintf_ret = snprintf(val, max_value_len, "%s", value)))
+          {
+            TBSYS_LOG(ERROR, "value's length (%d) of key ('%s') is too large. max value length supported is %d. value=%s",
+                strlen(value), name, max_value_len - 1, value);
+            ret = -2;
+          }
+        }
+
+        return ret;
     }
 
-    /* ÊÇ¶ÎÃû */
+    int CConfig::parseLine(STR_STR_MAP *&m, char *data)
+    {
+        int             ret = 0;
+        static const int       MAX_KEY_LENGTH = 128;
+        static const int       MAX_VALUE_LENGTH = 4096;
+        char            key[MAX_KEY_LENGTH], value[MAX_VALUE_LENGTH];
+        char          * sName = isSectionName(data);
+        // æ˜¯æ®µå
+        if (sName != NULL) {
+            STR_MAP_ITER it = m_configMap.find(sName);
+            if (it == m_configMap.end()) {
+                m = new STR_STR_MAP();
+                m_configMap.insert(STR_MAP::value_type(/*CStringUtil::strToLower(sName)*/sName, m));
+            } else {
+                m = it->second;
+            }
+        } else {
+            ret = parseValue(data, key, MAX_KEY_LENGTH, value, MAX_VALUE_LENGTH);
+            if (ret == -2) {
+                TBSYS_LOG(ERROR, "è§£æé”™è¯¯, Line: %s", data);
+            } else if (ret < 0) {
+                ret = 0;
+            } else if (m == NULL) {
+                TBSYS_LOG(ERROR, "æ²¡åœ¨é…ç½®section, Line: %s", data);
+                ret = -1;
+            } else {
+                STR_STR_MAP_ITER it1 = m->find(key);
+                if (it1 != m->end()) {
+                    it1->second += '\0';
+                    it1->second += value;
+                } else {
+                    m->insert(STR_STR_MAP::value_type(key, value));
+                }
+            }
+        }
+        return ret;
+    }
+
+    /* æ˜¯æ®µå */
     char *CConfig::isSectionName(char *str) {
         if (str == NULL || strlen(str) <= 2 || (*str) != '[') 
             return NULL;
@@ -112,63 +165,87 @@ namespace tbsys {
     }
     
     /**
-     * ¼ÓÔØÎÄ¼ş
+     * åŠ è½½æ–‡ä»¶
      */
     int CConfig::load(const char *filename)
     {
         FILE           *fp;
-        char            key[128], value[4096], data[4096];
-        int             ret, line = 0;
-        
+        int             ret;
+        char            data[4096];
+
         if ((fp = fopen(filename, "rb")) == NULL) {
-            TBSYS_LOG(ERROR, "²»ÄÜ´ò¿ªÅäÖÃÎÄ¼ş: %s", filename);
+            TBSYS_LOG(ERROR, "ä¸èƒ½æ‰“å¼€é…ç½®æ–‡ä»¶: %s", filename);
             return EXIT_FAILURE;
         }
-        
+
         STR_STR_MAP *m = NULL;
         while (fgets(data, 4096, fp)) {
-            line ++;
-            char *sName = isSectionName(data);
-            // ÊÇ¶ÎÃû
-            if (sName != NULL) {
-                STR_MAP_ITER it = m_configMap.find(sName);
-                if (it == m_configMap.end()) {
-                    m = new STR_STR_MAP();
-                    m_configMap.insert(STR_MAP::value_type(/*CStringUtil::strToLower(sName)*/sName, m));
-                } else {
-                    m = it->second;
-                }
-                continue;
-            }
-            ret = parseValue(data, key, value);
-            if (ret == -2) {
-                TBSYS_LOG(ERROR, "½âÎö´íÎó, Line: %d, %s", line, data);
-                fclose(fp);
-                return EXIT_FAILURE;
-            }
-            if (ret < 0) {
-                continue;
-            }
-            if (m == NULL) {
-                TBSYS_LOG(ERROR, "Ã»ÔÚÅäÖÃsection, Line: %d, %s", line, data);
-                fclose(fp);
-                return EXIT_FAILURE;
-            }            
-            //CStringUtil::strToLower(key);
-            STR_STR_MAP_ITER it1 = m->find(key);
-            if (it1 != m->end()) {
-                it1->second += '\0';
-                it1->second += value;
-            } else {
-                m->insert(STR_STR_MAP::value_type(key, value));
+            ret = parseLine(m, data);
+            if (ret != 0) {
+                TBSYS_LOG(ERROR, "parseLine error: %s", data);
+                break;
             }
         }
         fclose(fp);
-        return EXIT_SUCCESS;
+        return ret;
+    }
+
+    int CConfig::loadContent(const char * content)
+    {
+        int             ret = 0;
+        char            data[4096];
+
+        int             content_len = strlen(content), pos = 0;
+
+        STR_STR_MAP *m = NULL;
+        if (content_len > 0) {
+            do {
+                ret = getLine(data, 4096, content, content_len, pos);
+                if (ret != 0) {
+                    TBSYS_LOG(ERROR, "getLine error: %d, %s", pos, content);
+                    break;
+                } else {
+                    ret = parseLine(m, data);
+                    if (ret != 0) {
+                        TBSYS_LOG(ERROR, "parseLine error: %s", data);
+                        break;
+                    }
+                }
+            } while (pos < content_len);
+        } else {
+            TBSYS_LOG(INFO, "content is empty");
+        }
+        return ret;
+    }
+
+    int CConfig::getLine(char * buf, const int buf_len,
+        const char * content, const int content_len, int & pos)
+    {
+        int ret = 0;
+        if (pos < content_len) {
+            int end = pos;
+            while (end < content_len && content[end] != '\n') end++;
+            if (end - pos >= buf_len) {
+                TBSYS_LOG(ERROR, "line size exceed max: %d %d", end - pos, buf_len);
+                ret = -1;
+            } else {
+                memcpy(buf, content + pos, end - pos);
+                buf[end - pos] = '\0';
+                if (end == content_len) {
+                    pos = end;
+                } else {
+                    pos = end + 1;
+                }
+            }
+        } else {
+            TBSYS_LOG(ERROR, "error pos: %d", pos);
+            ret = -1;
+        }
+        return ret;
     }
 
     /**
-     * È¡Ò»¸östring
+     * å–ä¸€ä¸ªstring
      */
     const char *CConfig::getString(const char *section, const string& key, const char *d)
     {
@@ -184,7 +261,7 @@ namespace tbsys {
     }
     
     /**
-     * È¡Ò»stringÁĞ±í
+     * å–ä¸€stringåˆ—è¡¨
      */
     vector<const char*> CConfig::getStringList(const char *section, const string& key) {
         vector<const char*> ret;
@@ -209,7 +286,7 @@ namespace tbsys {
     }
 
     /**
-     * È¡Ò»ÕûĞÍ
+     * å–ä¸€æ•´å‹
      */
     int CConfig::getInt(const char *section, const string& key, int d)
     {
@@ -218,7 +295,7 @@ namespace tbsys {
     }
     
     /**
-     * È¡Ò»int list
+     * å–ä¸€int list
      */
     vector<int> CConfig::getIntList(const char *section, const string& key) {
         vector<int> ret;
@@ -242,7 +319,7 @@ namespace tbsys {
         return ret;
     }
     
-    // È¡Ò»sectionÏÂËùÓĞµÄkey
+    // å–ä¸€sectionä¸‹æ‰€æœ‰çš„key
     int CConfig::getSectionKey(const char *section, vector<string> &keys)
     {
         STR_MAP_ITER it = m_configMap.find(section);
@@ -256,7 +333,7 @@ namespace tbsys {
         return (int)keys.size();
     }
              
-    // µÃµ½ËùÓĞsectionµÄÃû×Ö
+    // å¾—åˆ°æ‰€æœ‰sectionçš„åå­—
     int CConfig::getSectionName(vector<string> &sections)
     {
         STR_MAP_ITER it;
