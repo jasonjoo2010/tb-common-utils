@@ -3,6 +3,19 @@
 *.lo
 *.o
 
+Makefile*
+aclocal.m4
+*.cache
+compile
+config.*
+configure
+depcomp
+install-sh
+libtool
+ltmain.sh
+missing
+.deps/
+
 # Compiled Dynamic libraries
 *.so
 *.dylib

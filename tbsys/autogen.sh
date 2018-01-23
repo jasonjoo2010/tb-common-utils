@@ -8,7 +8,15 @@ if [ "$1" == "clean" ]; then
    exit;
 fi
 
-libtoolize --force
+libtoolize --force >/dev/null 2>&1
+if [ $? != "0" ]; then
+	echo "no libtoolize found, try to use glibtoolize"
+	glibtoolize --force >/dev/null 2>&1
+	if [ $? != "0" ]; then
+		echo "no glibtoolize either, please figure it out"
+		exit 2
+	fi
+fi
 aclocal
 autoconf
 automake --add-missing --force
